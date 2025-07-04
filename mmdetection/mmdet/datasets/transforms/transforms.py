@@ -3894,17 +3894,6 @@ class ResizeSequences(BaseTransform):
         )
         results['img_shape'] = results['img'].shape[:2]
 
-        # Resize annotations for each frame
-        #if 'images' in results:
-        #    for frame_data in results['images']:
-        #        if 'gt_bboxes' in frame_data:
-        #            bboxes = HorizontalBoxes(frame_data['gt_bboxes'])
-        #            bboxes.rescale_((scale_factor, scale_factor))
-                    # Convert back to tensor
-        #            frame_data['gt_bboxes'] = bboxes.tensor
-                    # Update frame's img_shape
-        #            frame_data['img_shape'] = results['img_shape']
-
         # Resize bboxes if they exist
         if 'gt_bboxes' in results:
             bboxes = results['gt_bboxes']
@@ -3967,9 +3956,6 @@ class FormatTemporalInput(BaseTransform):
             elif img.ndim == 3:  # Grayscale
                 img = np.ascontiguousarray(np.expand_dims(img, axis=1))  # (T,1,H,W)
             results['img'] = to_tensor(img)
-        
-        
-
         #print(f"Transform {self.__class__.__name__} output shape: {results['img'].shape}")
         
         return results
@@ -3982,7 +3968,7 @@ class MultiFrameAddRGBChannel(object):
     def __call__(self, results):
         img = results['img']  # (H,W,T) - grayscale frames stacked in channels
     
-        # Clip to 10-bit range first (critical for DSA)
+        # Clip to 10-bit range first 
         img = np.clip(img, 0, 1023)
         
         # Reshape to (H,W,T,1) then repeat to RGB
@@ -4010,8 +3996,7 @@ class TemporalNormalize(BaseTransform):
     def transform(self, results):
         img = results['img']  # (T,H,W,3) 
         #print(f"Pre-normalization shape: {results['img'].shape}")
-        
-                
+          
         # Verify input range
         if img.max() > 1023 or img.min() < 0:
             warnings.warn(f"Input values out of 10-bit range: {img.min()} to {img.max()}")
@@ -4025,27 +4010,7 @@ class TemporalNormalize(BaseTransform):
         #print(f"Transform {self.__class__.__name__} output shape: {results['img'].shape}")
         
         return results
-    '''
-    def __init__(self, mean, std, to_rgb=False):  # Changed to_rgb default
-        self.mean = np.array(mean, dtype=np.float32)
-        self.std = np.array(std, dtype=np.float32)
-        self.to_rgb = to_rgb
-
-    def transform(self, results):
-        img = results['img']  # (H,W,T) - grayscale frames stacked in channels
-        # Reshape to (H,W,T,1)
-        img = np.expand_dims(img, axis=-1)  # (H,W,T,1)
-        # Reorder to (T,H,W,1)
-        img = np.transpose(img, (2, 0, 1, 3))
-        # Normalize each frame
-        img = (img - self.mean) / self.std
-        # Convert to (T,C,H,W)
-        results['img'] = np.transpose(img, (0, 3, 1, 2))
-            
-        print(f"Transform {self.__class__.__name__} output shape: {results['img'].shape}")
-        return results
-    '''
-
+    
 @TRANSFORMS.register_module()
 class TemporalRandomFlip(BaseTransform):
     """Flip all frames in a sequence & their bounding boxes.
@@ -4074,16 +4039,6 @@ class TemporalRandomFlip(BaseTransform):
 
         # Flip the stacked frames
         results['img'] = mmcv.imflip(results['img'], direction)
-
-        # Flip annotations for each frame
-        #if 'images' in results:
-        #    h, w = results['img_shape']
-        #    for frame_data in results['images']:
-        #        if 'gt_bboxes' in frame_data:
-        #            from mmdet.structures.bbox import HorizontalBoxes
-        #            bboxes = HorizontalBoxes(frame_data['gt_bboxes'])
-        #           bboxes.flip_((h, w), direction)
-        #            frame_data['gt_bboxes'] = bboxes.tensor
         
         # Flip bboxes if they exist
         if 'gt_bboxes' in results:
@@ -4107,34 +4062,6 @@ class TemporalRandomFlip(BaseTransform):
         #    else:
         #        print("No bboxes in first frame")
         return results
-    '''    
-    @autocast_box_type()
-    def transform(self, results):
-        if np.random.rand() > self.prob:
-            return results
-            
-        # Get flip direction
-        if isinstance(self.direction, list):
-            direction = np.random.choice(self.direction)
-        else:
-            direction = self.direction
-            
-        results['flip_direction'] = direction
-        
-        # Flip entire multi-channel image (all frames simultaneously)
-        img = results['img']  # (H,W,C)
-        results['img'] = mmcv.imflip(img, direction)
-
-        print(f"{self.__class__.__name__} input - bboxes: {results.get('gt_bboxes', None)}")
-        
-        # Flip bboxes if they exist
-        if 'gt_bboxes' in results:
-            h, w = results['img_shape']
-            results['gt_bboxes'].flip_((h, w), direction)
-                
-        print(f"{self.__class__.__name__} output - bboxes: {results.get('gt_bboxes', None)}")
-        return results
-    '''
 
 @TRANSFORMS.register_module()
 @avoid_cache_randomness
@@ -4226,221 +4153,3 @@ class TemporalAlbu(BaseTransform):
         print(f"{self.__class__.__name__} output - bboxes: {results.get('gt_bboxes', None)}")
         print(f"Transform {self.__class__.__name__} output shape: {results['img'].shape}")
         return results
-                
-
-@TRANSFORMS.register_module()
-class DebugDump:
-    def __call__(self, results):
-        print("\n=== DEBUG DUMP ===")
-        print("Image shape:", results['img'].shape)
-        print("GT bboxes exists:", 'gt_bboxes' in results)
-        if 'gt_bboxes' in results:
-            print("Num GT bboxes:", len(results['gt_bboxes']))
-        print("==================")
-        return results
-
-@TRANSFORMS.register_module()
-class SeqResize(Resize):
-    """Resize images.
-
-    Please refer to `mmdet.datasets.pipelines.transforms.py:Resize` for
-    detailed docstring.
-
-    Args:
-        share_params (bool): If True, share the resize parameters for all
-            images. Defaults to True.
-    """
-
-    def __init__(self, share_params=True, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.share_params = share_params
-
-    def __call__(self, results):
-        """Call function.
-
-        For each dict in results, call the call function of `Resize` to resize
-        image and corresponding annotations.
-
-        Args:
-            results (list[dict]): List of dict that from
-                :obj:`mmtrack.CocoVideoDataset`.
-
-        Returns:
-            list[dict]: List of dict that contains resized results,
-            'img_shape', 'pad_shape', 'scale_factor', 'keep_ratio' keys
-            are added into result dict.
-        """
-        outs, scale = [], None
-        for i, _results in enumerate(results):
-            if self.share_params and i > 0:
-                _results['scale'] = scale
-            _results = super().__call__(_results)
-            if self.share_params and i == 0:
-                scale = _results['scale']
-            outs.append(_results)
-        print(f"{self.__class__.__name__} output: {outs}")
-        print(f"Transform {self.__class__.__name__} output shape: {results['img'].shape}")
-        return outs
-
-
-@TRANSFORMS.register_module()
-class SeqNormalize(MMCV_Normalize):
-    """Normalize images.
-
-    Please refer to `mmdet.datasets.pipelines.transforms.py:Normalize` for
-    detailed docstring.
-    """
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-
-    def __call__(self, results):
-        """Call function.
-
-        For each dict in results, call the call function of `Normalize` to
-        normalize image.
-
-        Args:
-            results (list[dict]): List of dict that from
-                :obj:`mmtrack.CocoVideoDataset`.
-
-        Returns:
-            list[dict]: List of dict that contains normalized results,
-            'img_norm_cfg' key is added into result dict.
-        """
-        outs = []
-        for _results in results:
-            _results = super().__call__(_results)
-            outs.append(_results)
-        print(f"{self.__class__.__name__} output: {outs}")
-        print(f"Transform {self.__class__.__name__} output shape: {results['img'].shape}")
-        return outs
-
-
-@TRANSFORMS.register_module()
-class SeqRandomFlip(RandomFlip):
-    """Randomly flip for images.
-
-    Please refer to `mmdet.datasets.pipelines.transforms.py:RandomFlip` for
-    detailed docstring.
-
-    Args:
-        share_params (bool): If True, share the flip parameters for all images.
-            Defaults to True.
-    """
-
-    def __init__(self, share_params, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.share_params = share_params
-
-    def __call__(self, results):
-        """Call function.
-
-        For each dict in results, call `RandomFlip` to randomly flip image.
-
-        Args:
-            results (list[dict]): List of dict that from
-                :obj:`mmtrack.CocoVideoDataset`.
-
-        Returns:
-            list[dict]: List of dict that contains flipped results, 'flip',
-            'flip_direction' keys are added into the dict.
-        """
-        if self.share_params:
-            if isinstance(self.direction, list):
-                # None means non-flip
-                direction_list = self.direction + [None]
-            else:
-                # None means non-flip
-                direction_list = [self.direction, None]
-
-            if isinstance(self.flip_ratio, list):
-                non_flip_ratio = 1 - sum(self.flip_ratio)
-                flip_ratio_list = self.flip_ratio + [non_flip_ratio]
-            else:
-                non_flip_ratio = 1 - self.flip_ratio
-                # exclude non-flip
-                single_ratio = self.flip_ratio / (len(direction_list) - 1)
-                flip_ratio_list = [single_ratio] * (len(direction_list) -
-                                                    1) + [non_flip_ratio]
-
-            cur_dir = np.random.choice(direction_list, p=flip_ratio_list)
-            flip = cur_dir is not None
-            flip_direction = cur_dir
-
-            for _results in results:
-                _results['flip'] = flip
-                _results['flip_direction'] = flip_direction
-
-        outs = []
-        for _results in results:
-            _results = super().__call__(_results)
-            outs.append(_results)
-        print(f"{self.__class__.__name__} output: {outs}")
-        print(f"Transform {self.__class__.__name__} output shape: {results['img'].shape}")
-        return outs
-
-
-@TRANSFORMS.register_module()
-class SeqPad(Pad):
-    """Pad images.
-
-    Please refer to `mmdet.datasets.pipelines.transforms.py:Pad` for detailed
-    docstring.
-    """
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-
-    def __call__(self, results):
-        """Call function.
-
-        For each dict in results, call the call function of `Pad` to pad image.
-
-        Args:
-            results (list[dict]): List of dict that from
-                :obj:`mmtrack.CocoVideoDataset`.
-
-        Returns:
-            list[dict]: List of dict that contains padding results,
-            'pad_shape', 'pad_fixed_size' and 'pad_size_divisor' keys are
-            added into the dict.
-        """
-        outs = []
-        for _results in results:
-            _results = super().__call__(_results)
-            outs.append(_results)
-        print(f"{self.__class__.__name__} output: {outs}")
-        print(f"Transform {self.__class__.__name__} output shape: {results['img'].shape}")
-        return outs
-
-@TRANSFORMS.register_module()
-class EnsureInstanceData(BaseTransform):
-    def transform(self, results):
-        # Handle both single-frame and temporal cases
-        frames = results['images'] if 'images' in results else [results]
-        
-        for frame in frames:
-            if 'gt_instances' in frame:
-                # Ensure bboxes/labels exist as tensors
-                if not hasattr(frame['gt_instances'], 'bboxes'):
-                    frame['gt_instances'].bboxes = torch.zeros((0, 4), dtype=torch.float32)
-                if not hasattr(frame['gt_instances'], 'labels'):
-                    frame['gt_instances'].labels = torch.zeros((0,), dtype=torch.int64)
-            else:
-                # Create new InstanceData if missing
-                frame['gt_instances'] = InstanceData(
-                    bboxes=torch.zeros((0, 4), dtype=torch.float32),
-                    labels=torch.zeros((0,), dtype=torch.int64)
-                )
-        return results
-    
-    '''
-    def transform(self, results):
-        if 'images' in results:
-            for frame_data in results['images']:
-                if 'gt_bboxes' not in frame_data or len(frame_data['gt_bboxes']) == 0:
-                    frame_data['gt_bboxes'] = np.zeros((0, 4), dtype=np.float32)
-                    frame_data['gt_labels'] = np.zeros((0,), dtype=np.int64)
-        return results
-    '''
