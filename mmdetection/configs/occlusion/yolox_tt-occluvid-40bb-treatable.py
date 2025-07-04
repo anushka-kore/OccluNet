@@ -76,8 +76,6 @@ model = dict(
         dropout=0.1
     ),
     train_cfg=dict(assigner=dict(type='SimOTAAssigner', center_radius=2.5)),
-    # In order to align the source code, the threshold of the val phase is
-    # 0.01, and the threshold of the test phase is 0.001.
     test_cfg=dict(score_thr=0.01, nms=dict(type='nms', iou_threshold=0.60)))
 
 train_pipeline = [
@@ -122,7 +120,6 @@ train_dataloader = dict(
     multiprocessing_context='spawn',
     dataset=train_dataset)
 
-#best epoch = 9
 val_dataloader = dict(
     batch_size=1,
     num_workers=4,
@@ -181,7 +178,6 @@ param_scheduler = [
         end=2,     
         convert_to_iter_based=True),
     dict(
-        # use cosine lr from 5 to 285 epoch
         type='CosineAnnealingLR',
         eta_min=base_lr * 0.001,
         begin=2,
@@ -190,12 +186,11 @@ param_scheduler = [
         by_epoch=True,
         convert_to_iter_based=True),
     dict(
-        # use fixed lr during last 15 epochs
         type='ConstantLR',
         by_epoch=True,
         factor=1,
         begin=max_epochs - num_last_epochs,
-        end=max_epochs,
+        end=max_epochs
     )
 ]
 
