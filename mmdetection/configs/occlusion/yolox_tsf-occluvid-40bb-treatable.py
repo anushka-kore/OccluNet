@@ -12,8 +12,6 @@ METAINFO = {
         'classes' : ('Occlusion', )
     }
 
-#img_norm_cfg = dict(
-#    mean=[123.675, 116.28, 103.53], std=[58.395, 57.12, 57.375], to_rgb=True)
 img_norm_cfg = dict(
     mean=[0,0,0], std=[1023, 1023, 1023], to_rgb=True) # Single channel mean repeated for RGB with 10-bit normalization
 
@@ -58,13 +56,10 @@ model = dict(
             reduction='sum',
             loss_weight=1.0),
         loss_bbox=dict(
-            #type='DistanceReLuIoULoss',
             type='DIoULoss',
-            #mode='square',
             eps=1e-6,
             reduction='sum',
-            loss_weight=2,
-            #beta=0.25
+            loss_weight=2
             ),
         loss_obj=dict(
             type='CrossEntropyLoss',
@@ -74,7 +69,7 @@ model = dict(
         loss_l1=dict(type='L1Loss', reduction='sum', loss_weight=1.0)),
     temporal_cfg=dict(
         type='TimeSformerTransformer',
-        input_dim=128,  # Should match neck output channels
+        input_dim=128,  
         model_dim=128,
         num_heads=4,
         num_layers=4,
@@ -125,7 +120,6 @@ train_dataloader = dict(
     multiprocessing_context='spawn',
     dataset=train_dataset)
 
-#Best epoch = 5
 val_dataloader = dict(
     batch_size=1,
     num_workers=4,
@@ -156,9 +150,9 @@ val_evaluator = dict(
 test_evaluator = val_evaluator
 
 # training settings
-max_epochs = 20     #50
-num_last_epochs = 2      #15
-interval = 1        #5
+max_epochs = 20    
+num_last_epochs = 2     
+interval = 1      
 
 train_cfg = dict(type='EpochBasedTrainLoop', max_epochs=max_epochs, val_interval=interval)
 val_cfg = dict(type='ValLoop')  
@@ -181,10 +175,9 @@ param_scheduler = [
         type='mmdet.QuadraticWarmupLR',
         by_epoch=True,
         begin=0,
-        end=2,      #10
+        end=2,    
         convert_to_iter_based=True),
     dict(
-        # use cosine lr from 5 to 285 epoch
         type='CosineAnnealingLR',
         eta_min=base_lr * 0.001,
         begin=2,
@@ -193,7 +186,6 @@ param_scheduler = [
         by_epoch=True,
         convert_to_iter_based=True),
     dict(
-        # use fixed lr during last 15 epochs
         type='ConstantLR',
         by_epoch=True,
         factor=1,
@@ -215,10 +207,6 @@ default_hooks = dict(
         ))
 
 custom_hooks = [
-    #dict(
-    #    type='YOLOXModeSwitchHook',
-    #    num_last_epochs=num_last_epochs,
-    #    priority=48),
     dict(type='SyncNormHook', priority=48),
     dict(
         type='EMAHook',
@@ -235,8 +223,6 @@ auto_scale_lr = dict(base_batch_size=64)
 
 
 evaluation = dict(interval=1, metric='bbox', save_best='auto')
-
-#custom_hooks = [dict(type='MyHook', interval=1)]    # For logging val losses
 
 vis_backends = [dict(type='LocalVisBackend')]
 visualizer = dict(
