@@ -178,7 +178,6 @@ param_scheduler = [
         end=2,      #10
         convert_to_iter_based=True),
     dict(
-        # use cosine lr from 5 to 285 epoch
         type='CosineAnnealingLR',
         eta_min=base_lr * 0.001,
         begin=2,
@@ -187,7 +186,6 @@ param_scheduler = [
         by_epoch=True,
         convert_to_iter_based=True),
     dict(
-        # use fixed lr during last 15 epochs
         type='ConstantLR',
         by_epoch=True,
         factor=1,
