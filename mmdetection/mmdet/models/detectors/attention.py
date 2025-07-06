@@ -232,15 +232,6 @@ class TransformerPredictor(pl.LightningModule):
         attention_maps = self.transformer.get_attention_maps(x, mask=mask)
         return attention_maps
 
-    # def configure_optimizers(self):
-    #     optimizer = optim.Adam(self.parameters(), lr=self.hparams.lr)
-    #
-    #     # We don't return the lr scheduler because we need to apply it per iteration, not per epoch
-    #     self.lr_scheduler = CosineWarmupScheduler(optimizer,
-    #                                               warmup=self.hparams.warmup,
-    #                                               max_iters=self.hparams.max_iters)
-    #     return optimizer
-
     def optimizer_step(self, *args, **kwargs):
         super().optimizer_step(*args, **kwargs)
         self.lr_scheduler.step()  # Step per iteration
