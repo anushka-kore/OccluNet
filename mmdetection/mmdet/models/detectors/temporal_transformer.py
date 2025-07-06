@@ -50,14 +50,7 @@ class TemporalTransformer(nn.Module):
         # print("transformer output shape: {}.".format(x.shape))
         # x = self.output_net(x)
         return x
-
-    @torch.no_grad()
-    def get_attention_maps(self, x, mask=None, spatial_shape=None, add_positional_encoding=True):
-        x = self.input_net(x)
-        if add_positional_encoding:
-            x = self.positional_encoding(x)
-        return self.transformer.get_attention_maps(x, mask=mask)
-
+        
 
 @MODELS.register_module()
 class TimeSformerTransformer(nn.Module):
@@ -146,33 +139,3 @@ class TimeSformerTransformer(nn.Module):
         x = x[:, :, :, center_idx, :]   # [B, H, W, D]
         
         return x
-
-    @torch.no_grad()
-    def get_attention_maps(self, x, mask=None, spatial_shape=None, add_positional_encoding=True):
-        x = self.input_net(x)
-        if add_positional_encoding:
-            x = self.positional_encoding(x)
-        BHW, T, D = x.shape
-        if spatial_shape is None:
-            raise ValueError("spatial_shape must be provided for attention map extraction.")
-        H, W = spatial_shape
-        B = BHW // (H * W)
-        x = x.view(B, H, W, T, D)
-        space_attn_maps = []
-        time_attn_maps = []
-        for space_layer, time_layer in zip(self.space_layers, self.time_layers):
-            # Spatial attention
-            x_space = x.reshape(B*T, H*W, D)
-            _, space_attn = space_layer.self_attn(x_space, mask=mask, return_attention=True)
-            space_attn_maps.append(space_attn)
-            x_space = space_layer(x_space, mask=mask)
-            x_space = x_space.view(B, T, H, W, D)
-            # Temporal attention
-            x_time = x.reshape(B*H*W, T, D)
-            _, time_attn = time_layer.self_attn(x_time, mask=mask, return_attention=True)
-            time_attn_maps.append(time_attn)
-            x_time = time_layer(x_time, mask=mask)
-            x_time = x_time.view(B, H, W, T, D)
-            x_time = x_time.permute(0, 3, 1, 2, 4)
-            x = x_space + x_time
-        return space_attn_maps, time_attn_maps
