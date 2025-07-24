@@ -1,3 +1,5 @@
+'''Calculate per-class occlusion detection results for OccluNet'''
+
 import pandas as pd
 import ast
 from collections import defaultdict
