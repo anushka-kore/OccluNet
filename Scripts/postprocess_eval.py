@@ -1,3 +1,5 @@
+'''Postprocess OccluNet validation results to filter out the highest confidence prediction per DSA sequence for further evaluation through temporal consistency'''
+
 import json
 import numpy as np
 import matplotlib.pyplot as plt
